@@ -25,7 +25,7 @@ def run_producer(transactions_per_second: int = 2):
 
     try:
         while True:
-            txn = generate_transaction(fraud_rate=0.08)
+            txn = generate_transaction()   # no argument needed anymore
             payload = json.dumps(txn.to_kafka_payload())
 
             producer.produce(

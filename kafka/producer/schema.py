@@ -29,8 +29,10 @@ class Transaction(BaseModel):
     device_fingerprint: str
     session_id: str
     is_fraud: Optional[bool] = None
-    fraud_pattern: Optional[str] = None   # add this line
-
+    fraud_pattern: Optional[str] = None
 
     def to_kafka_payload(self) -> dict:
-        return self.model_dump()
+        return self.dict()       # v1 uses .dict() not .model_dump()
+
+    class Config:
+        arbitrary_types_allowed = True

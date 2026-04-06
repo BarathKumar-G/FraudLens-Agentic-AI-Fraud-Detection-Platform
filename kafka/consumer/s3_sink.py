@@ -8,7 +8,7 @@ import tempfile
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 logger = logging.getLogger(__name__)
 
 class S3Sink:

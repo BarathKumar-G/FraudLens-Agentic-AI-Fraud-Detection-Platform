@@ -1,48 +1,59 @@
 import json
-import time
 import logging
-from confluent_kafka import Producer
-from transaction_simulator import generate_transaction
+from confluent_kafka import Consumer, KafkaError
+from s3_sink import S3Sink
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 KAFKA_CONFIG = {
     "bootstrap.servers": "localhost:9092",
+    "group.id":          "fraud-detection-consumer",
+    "auto.offset.reset": "earliest",
 }
 
-TOPIC = "transactions"
+TOPIC       = "transactions"
+BATCH_SIZE  = 20
+BATCH_TIMEOUT = 30
 
-def delivery_report(err, msg):
-    if err:
-        logger.error(f"Delivery failed: {err}")
-    else:
-        logger.info(f"Delivered → {msg.topic()} [{msg.partition()}] @ offset {msg.offset()}")
+def run_consumer():
+    consumer = Consumer(KAFKA_CONFIG)
+    consumer.subscribe([TOPIC])
+    sink = S3Sink()
 
-def run_producer(transactions_per_second: int = 2):
-    producer = Producer(KAFKA_CONFIG)
-    logger.info(f"Producer started — sending {transactions_per_second} tx/sec to topic '{TOPIC}'")
+    batch  = []
+    logger.info(f"Consumer listening on topic '{TOPIC}'...")
 
     try:
         while True:
-            txn = generate_transaction(fraud_rate=0.08)
-            payload = json.dumps(txn.to_kafka_payload())
+            msg = consumer.poll(timeout=1.0)
 
-            producer.produce(
-                topic=TOPIC,
-                key=txn.user_id,
-                value=payload,
-                callback=delivery_report,
-            )
-            producer.poll(0)
+            if msg is None:
+                if batch:
+                    sink.flush(batch)
+                    batch = []
+                continue
 
-            time.sleep(1 / transactions_per_second)
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    continue
+                logger.error(f"Kafka error: {msg.error()}")
+                continue
+
+            record = json.loads(msg.value().decode("utf-8"))
+            batch.append(record)
+            logger.info(f"Consumed txn {record['transaction_id']} | user={record['user_id']} | amount={record['amount']}")
+
+            if len(batch) >= BATCH_SIZE:
+                sink.flush(batch)
+                batch = []
 
     except KeyboardInterrupt:
-        logger.info("Shutting down producer...")
+        logger.info("Shutting down consumer...")
+        if batch:
+            sink.flush(batch)
     finally:
-        producer.flush()
-        logger.info("Producer flushed and closed.")
+        consumer.close()
 
 if __name__ == "__main__":
-    run_producer()
+    run_consumer()

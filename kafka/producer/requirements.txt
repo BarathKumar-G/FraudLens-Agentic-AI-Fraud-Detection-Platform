@@ -1,4 +1,4 @@
 confluent-kafka==2.3.0
-pydantic==2.6.0
+pydantic==1.10.13
 faker==24.0.0
 python-dotenv==1.0.0
