@@ -1,0 +1,69 @@
+# ── Secrets & environment ─────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ── Python ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.eggs/
+*.egg-info/
+dist/
+build/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# ── Jupyter / Databricks notebooks ────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ── ML model artifacts ────────────────────────────────
+ml/models/*.pkl
+ml/models/*.joblib
+ml/models/*.h5
+ml/models/*.pt
+ml/models/*.bin
+mlruns/
+mlflow.db
+
+# ── Node / Frontend ───────────────────────────────────
+node_modules/
+frontend/dist/
+frontend/build/
+.npm
+*.tsbuildinfo
+
+# ── Docker ────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── AWS / Cloud ───────────────────────────────────────
+.aws/
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# ── OS clutter ────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
