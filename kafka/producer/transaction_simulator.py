@@ -12,8 +12,8 @@ random.seed(42)
 # ── Scale constants ────────────────────────────────────────────────────────────
 NUM_USERS           = 5000
 NUM_MERCHANTS       = 200
-FRAUD_RATE          = 0.012   # 1.2% — realistic for credit card fraud
-HIGH_RISK_RATE      = 0.04    # high-risk merchants have elevated fraud
+FRAUD_RATE          = 0.3   # 3% — realistic for credit card fraud
+HIGH_RISK_RATE      = 0.1    # high-risk merchants have elevated fraud
 
 # ── Cities with realistic fraud risk weights ───────────────────────────────────
 CITIES = [
