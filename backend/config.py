@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     class Config:
-        env_file = os.path.join(os.path.dirname(__file__), "../.env")
+        env_file = ".env"
         extra = "ignore"
 
 settings = Settings()

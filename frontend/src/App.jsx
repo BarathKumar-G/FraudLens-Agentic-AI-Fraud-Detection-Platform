@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AlertCircle, ShieldAlert, ShieldCheck, Activity, Search, Clock } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = "http://98.92.3.19:8000";
 
 export default function App() {
   const [data, setData] = useState({ transactions: [] });

@@ -33,7 +33,6 @@ htmlcov/
 *.ipynb_checkpoints
 
 # ── ML model artifacts ────────────────────────────────
-ml/models/*.pkl
 ml/models/*.joblib
 ml/models/*.h5
 ml/models/*.pt

@@ -50,7 +50,7 @@ def upload_log_to_s3():
 
 # ---------------- KAFKA CONFIG ---------------- #
 
-KAFKA_CONFIG = {"bootstrap.servers": "localhost:9092"}
+KAFKA_CONFIG = {"bootstrap.servers": "kafka:9092"}
 TOPIC = "transactions"
 
 

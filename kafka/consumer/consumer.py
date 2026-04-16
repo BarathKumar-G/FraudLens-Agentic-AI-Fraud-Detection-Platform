@@ -44,7 +44,7 @@ def upload_log_to_s3():
         logger.error(f"Log upload failed: {e}")
 
 KAFKA_CONFIG = {
-    "bootstrap.servers": "localhost:9092",
+    "bootstrap.servers": "kafka:9092",
     "group.id":          "fraud-detection-consumer",
     "auto.offset.reset": "earliest",
 }

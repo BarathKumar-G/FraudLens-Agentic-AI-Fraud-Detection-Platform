@@ -47,16 +47,17 @@ s3 = boto3.client(
 BUCKET = os.getenv("S3_BUCKET")
 
 # ---------------- LOAD MODELS ---------------- #
-import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-MODEL_DIR = os.path.join(BASE_DIR, "ml/models")
+MODEL_DIR = "/app/ml/models"
+
+logger.info(f"Loading models from: {MODEL_DIR}")
 
 rf = joblib.load(os.path.join(MODEL_DIR, "random_forest_v1.pkl"))
 scaler = joblib.load(os.path.join(MODEL_DIR, "scaler_v1.pkl"))
 imputer = joblib.load(os.path.join(MODEL_DIR, "imputer_v1.pkl"))
 
-logger.info("Models loaded (local)")
+logger.info("Models loaded successfully")
 
 # ---------------- AGENT ---------------- #
 from agent.agent import run_agent
@@ -188,7 +189,7 @@ def upload_alert_logs():
 
 # ---------------- KAFKA ---------------- #
 KAFKA_CONFIG = {
-    "bootstrap.servers": "localhost:9092",
+    "bootstrap.servers": "kafka:9092",
     "group.id": "fraud-realtime",
     "auto.offset.reset": "latest",
 }
@@ -214,55 +215,55 @@ def run():
             logger.error(msg.error())
             continue
 
-        record = json.loads(msg.value().decode("utf-8"))
+        try:
+            record = json.loads(msg.value().decode("utf-8"))
 
-        # -------- FEATURES -------- #
-        features = create_features(record)
+            features = create_features(record)
 
-        X = pd.DataFrame([features])
-        X = X.replace([np.inf, -np.inf], np.nan).fillna(0)
+            X = pd.DataFrame([features])
+            X = X.replace([np.inf, -np.inf], np.nan).fillna(0)
 
-        X = imputer.transform(X)
-        X = scaler.transform(X)
+            X = imputer.transform(X)
+            X = scaler.transform(X)
 
-        prob = rf.predict_proba(X)[0][1]
-        record["fraud_probability"] = float(prob)
+            prob = rf.predict_proba(X)[0][1]
+            record["fraud_probability"] = float(prob)
 
-        # -------- RISK -------- #
-        if prob < 0.3:
-            record["risk_tier"] = "low"
-        elif prob < 0.6:
-            record["risk_tier"] = "medium"
-        elif prob < 0.85:
-            record["risk_tier"] = "high"
-        else:
-            record["risk_tier"] = "critical"
+            # -------- RISK -------- #
+            if prob < 0.3:
+                record["risk_tier"] = "low"
+            elif prob < 0.6:
+                record["risk_tier"] = "medium"
+            elif prob < 0.85:
+                record["risk_tier"] = "high"
+            else:
+                record["risk_tier"] = "critical"
 
-        # -------- AGENT -------- #
-        if prob >= AGENT_THRESHOLD:
-            agent_output = run_agent(record)
-            record["agent_reason"] = agent_output["reason"]
-            record["agent_action"] = agent_output["action"]
-        else:
-            record["agent_reason"] = "Low risk based on ML model"
-            record["agent_action"] = "allow"
+            # -------- AGENT -------- #
+            if prob >= AGENT_THRESHOLD:
+                agent_output = run_agent(record)
+                record["agent_reason"] = agent_output["reason"]
+                record["agent_action"] = agent_output["action"]
+            else:
+                record["agent_reason"] = "Low risk based on ML model"
+                record["agent_action"] = "allow"
 
-        # -------- SAVE -------- #
-        save_prediction(record)
+            save_prediction(record)
 
-        # -------- ALERT LOG -------- #
-        if record["agent_action"] in ["monitor", "block"]:
-            alert_logger.info(
-                f"{record['transaction_id']} | {record['agent_action']} | "
-                f"{record['risk_tier']} | {prob:.3f} | {record['agent_reason']}"
+            if record["agent_action"] in ["monitor", "block"]:
+                alert_logger.info(
+                    f"{record['transaction_id']} | {record['agent_action']} | "
+                    f"{record['risk_tier']} | {prob:.3f} | {record['agent_reason']}"
+                )
+                upload_alert_logs()
+
+            logger.info(
+                f"Txn {record['transaction_id']} -> {record['risk_tier']} ({prob:.3f}) | "
+                f"Action: {record['agent_action']} | Reason: {record['agent_reason']}"
             )
-            upload_alert_logs()
 
-        # -------- MAIN LOG -------- #
-        logger.info(
-            f"Txn {record['transaction_id']} -> {record['risk_tier']} ({prob:.3f}) | "
-            f"Action: {record['agent_action']} | Reason: {record['agent_reason']}"
-        )
+        except Exception as e:
+            logger.error(f"Processing failed: {e}")
 
 if __name__ == "__main__":
     run()
