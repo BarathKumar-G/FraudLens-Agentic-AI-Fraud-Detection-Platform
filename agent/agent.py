@@ -52,17 +52,17 @@ Respond with JSON only.
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
+            response_format={"type": "json_object"}
         )
 
         content = response.choices[0].message.content.strip()
 
-        # -------- Extract JSON -------- #
         try:
             match = re.search(r"\{.*\}", content, re.DOTALL)
             if match:
                 return json.loads(match.group())
             else:
-                raise ValueError("No JSON found")
+                return json.loads(content)
 
         except Exception:
             return {
@@ -72,6 +72,6 @@ Respond with JSON only.
 
     except Exception as e:
         return {
-            "reason": f"LLM failed: {str(e)}",
+            "reason": "LLM failed: unable to generate valid response",
             "action": "monitor"
         }

@@ -1,4 +1,5 @@
 import json
+import time
 import boto3
 from typing import List, Dict, Any
 from config import settings
@@ -10,39 +11,46 @@ s3_client = boto3.client(
     region_name=settings.aws_region,
 )
 
-def get_predictions_from_s3(limit: int = 50) -> List[Dict[str, Any]]:
+
+def get_predictions_from_s3(limit: int = 50):
     prefix = "predictions/realtime/"
     predictions = []
 
     try:
         paginator = s3_client.get_paginator("list_objects_v2")
-        pages = paginator.paginate(
+
+        all_objects = []
+
+        for page in paginator.paginate(
             Bucket=settings.s3_bucket,
             Prefix=prefix
+        ):
+            if "Contents" in page:
+                all_objects.extend([
+                    obj for obj in page["Contents"]
+                    if obj["Key"].endswith(".json")
+                ])
+
+        # 🔥 FULL GLOBAL SORT (this is what you were missing)
+        all_objects.sort(
+            key=lambda x: x["LastModified"],
+            reverse=True
         )
 
-        objects = []
-        for page in pages:
-            if "Contents" in page:
-                for obj in page["Contents"]:
-                    if obj["Key"].endswith(".json"):
-                        objects.append(obj)
+        latest_objects = all_objects[:limit]
 
-        objects.sort(key=lambda x: x["LastModified"], reverse=True)
-        objects = objects[:limit]
-
-        for obj in objects:
+        for obj in latest_objects:
             try:
-                response = s3_client.get_object(
+                res = s3_client.get_object(
                     Bucket=settings.s3_bucket,
                     Key=obj["Key"]
                 )
-                content = response["Body"].read().decode("utf-8")
+                content = res["Body"].read().decode("utf-8")
                 predictions.append(json.loads(content))
-            except Exception:
-                pass
+            except:
+                continue
 
-    except Exception:
-        pass
+    except Exception as e:
+        print("S3 ERROR:", e)
 
     return predictions

@@ -3,24 +3,25 @@ from services.s3_service import get_predictions_from_s3
 
 router = APIRouter()
 
-def fetch_predictions():
-    return get_predictions_from_s3(limit=200)
+def fetch_predictions(limit=50):
+    return get_predictions_from_s3(limit=limit)
 
 @router.get("/alerts")
 def get_alerts():
-    predictions = get_predictions_from_s3(limit=1000)
+    predictions = fetch_predictions(100)  # slightly larger window for alerts
     alerts = [p for p in predictions if p.get("risk_tier", "").lower() in ["high", "critical"]]
     alerts.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     return alerts[:20]
 
 @router.get("/transactions")
 def get_transactions():
-    predictions = fetch_predictions()
-    return predictions[::-1]
+    predictions = fetch_predictions(50)
+    predictions.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return predictions
 
 @router.get("/transactions/{id}")
 def get_transaction(id: str):
-    predictions = fetch_predictions()
+    predictions = fetch_predictions(100)
     for p in predictions:
         if p.get("transaction_id") == id:
             return p
@@ -28,7 +29,7 @@ def get_transaction(id: str):
 
 @router.get("/metrics")
 def get_metrics():
-    predictions = get_predictions_from_s3(limit=1000)
+    predictions = fetch_predictions(200)
 
     total = len(predictions)
     fraud_count = 0
