@@ -1,0 +1,55 @@
+from fastapi import APIRouter, HTTPException
+from services.s3_service import get_predictions_from_s3
+
+router = APIRouter()
+
+def fetch_predictions():
+    return get_predictions_from_s3(limit=200)
+
+@router.get("/alerts")
+def get_alerts():
+    predictions = get_predictions_from_s3(limit=1000)
+    alerts = [p for p in predictions if p.get("risk_tier", "").lower() in ["high", "critical"]]
+    alerts.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    return alerts[:20]
+
+@router.get("/transactions")
+def get_transactions():
+    predictions = fetch_predictions()
+    return predictions[::-1]
+
+@router.get("/transactions/{id}")
+def get_transaction(id: str):
+    predictions = fetch_predictions()
+    for p in predictions:
+        if p.get("transaction_id") == id:
+            return p
+    raise HTTPException(status_code=404, detail="Transaction not found")
+
+@router.get("/metrics")
+def get_metrics():
+    predictions = get_predictions_from_s3(limit=1000)
+
+    total = len(predictions)
+    fraud_count = 0
+    risk_tiers = {}
+    agent_actions = {}
+
+    for p in predictions:
+        tier = p.get("risk_tier", "low").lower()
+        risk_tiers[tier] = risk_tiers.get(tier, 0) + 1
+
+        if tier in ["high", "critical"]:
+            fraud_count += 1
+
+        action = p.get("agent_action", "none").lower()
+        agent_actions[action] = agent_actions.get(action, 0) + 1
+
+    fraud_rate = (fraud_count / total * 100) if total > 0 else 0
+
+    return {
+        "total_transactions": total,
+        "fraud_rate": round(fraud_rate, 2),
+        "risk_tiers": risk_tiers,
+        "agent_actions": agent_actions
+    }
